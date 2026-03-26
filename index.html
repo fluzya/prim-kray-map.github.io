@@ -713,12 +713,30 @@
 ];
 
     const STORAGE_KEY = 'primorye-map-attractions';
+    function mergeWithDefaults(savedList, defaultsList) {
+      if (!Array.isArray(savedList) || savedList.length === 0) return defaultsList;
+      const result = savedList.map((item, idx) => {
+        const base = defaultsList[idx] || {};
+        const merged = Object.assign({}, base, item);
+        const hasSavedPhotos = Array.isArray(item && item.photos) && item.photos.some(Boolean);
+        if (!hasSavedPhotos && Array.isArray(base.photos)) {
+          merged.photos = base.photos.slice();
+        }
+        return merged;
+      });
+      if (result.length < defaultsList.length) {
+        for (let i = result.length; i < defaultsList.length; i++) result.push(defaultsList[i]);
+      }
+      return result;
+    }
     let attractions;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) attractions = parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          attractions = mergeWithDefaults(parsed, defaultAttractions);
+        }
       }
     } catch (e) {}
     if (!attractions) attractions = defaultAttractions;
