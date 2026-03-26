@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Достопримечательности Приморского края</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    :root {
+      --sea: #0d3b66;
+      --accent: #e07a5f;
+      --sand: #f4f1de;
+      --forest: #3d5a45;
+      --text: #1d3557;
+    }
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: linear-gradient(135deg, #0d3b66 0%, #1d3557 50%, #3d5a45 100%);
+      min-height: 100vh;
+      color: var(--text);
+      overflow: hidden;
+    }
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(13, 59, 102, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 1rem 2rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      border-bottom: 3px solid var(--accent);
+    }
+    .header h1 {
+      color: var(--sand);
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .header p {
+      color: rgba(244, 241, 222, 0.85);
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+    }
+    .coords-panel {
+      margin-top: 0.6rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .coords-panel input {
+      height: 34px;
+      padding: 0 0.65rem;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      color: var(--sand);
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+      min-width: 180px;
+    }
+    .coords-panel input::placeholder {
+      color: rgba(244, 241, 222, 0.65);
+    }
+    .coords-panel button {
+      height: 34px;
+      padding: 0 0.85rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    }
+    .coords-panel button:active {
+      transform: scale(0.99);
+    }
+    .coords-error {
+      font-size: 0.78rem;
+      color: rgba(244, 241, 222, 0.9);
+      opacity: 0.95;
+    }
+    #map {
+      position: absolute;
+      top: 80px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -4px 30px rgba(0,0,0,0.15);
+      background: #b5d0e0;
+    }
+    /* Опускаем + / - (zoom), чтобы не заезжали на хедер */
+    #map .leaflet-control-zoom {
+      margin-top: 90px;
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      border-left: 4px solid var(--accent);
+      font-family: 'Montserrat', sans-serif;
+      max-width: 440px;
+    }
+    .leaflet-popup-content {
+      margin: 1rem 1.25rem;
+      line-height: 1.5;
+    }
+    .popup-title {
+      font-weight: 700;
+      color: var(--sea);
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    .popup-desc {
+      color: #555;
+      font-size: 0.9rem;
+    }
+    .popup-photos {
+      margin-top: 0.75rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .popup-photos.single {
+      grid-template-columns: 1fr;
+    }
+    .popup-photo {
+      display: block;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: #f6f6f6;
+    }
+    .popup-photo img {
+      display: block;
+      width: 100%;
+      height: 170px;
+      object-fit: cover;
+    }
+    .popup-photos.single .popup-photo img {
+      height: 240px;
+    }
+    .popup-photo-caption {
+      padding: 0.35rem 0.5rem;
+      font-size: 0.68rem;
+      line-height: 1.2;
+      color: #555;
+      background: rgba(255,255,255,0.95);
+    }
+    .popup-photo-caption a {
+      color: var(--sea);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .popup-photo-caption a:hover {
+      text-decoration: underline;
+    }
+    /* "Подробнее" временно скрыто */
+    .popup-photos-loading {
+      margin-top: 0.6rem;
+      font-size: 0.78rem;
+      color: #666;
+    }
+    .popup-category {
+      display: inline-block;
+      margin-top: 0.5rem;
+      padding: 0.2rem 0.6rem;
+      background: var(--forest);
+      color: white;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .popup-categories {
+      margin-top: 0.75rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid #eee;
+    }
+    .popup-categories-label {
+      font-size: 0.75rem;
+      color: #666;
+      margin-bottom: 0.35rem;
+    }
+    .category-btn {
+      display: inline-block;
+      margin: 0.2rem 0.2rem 0 0;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #f8f8f8;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .category-btn:hover {
+      background: #eee;
+    }
+    .category-btn.active {
+      border-color: var(--sea);
+      background: var(--sand);
+      font-weight: 600;
+    }
+    .legend {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      padding: 1rem 1.25rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      font-size: 0.8rem;
+    }
+    .legend h3 {
+      margin-bottom: 0.5rem;
+      color: var(--sea);
+      font-size: 0.9rem;
+    }
+    .legend .map-attribution {
+      margin-top: 0.75rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid #eee;
+      font-size: 0.7rem;
+      color: #555;
+      line-height: 1.3;
+    }
+    .legend .map-attribution a {
+      color: var(--sea);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .legend .map-attribution a:hover {
+      text-decoration: underline;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.25rem 0;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .legend-dot.nature { background: #2d6a4f; }
+    .legend-dot.culture { background: #9d4edd; }
+    .legend-dot.urban { background: #e07a5f; }
+    .legend-dot.coast { background: #0077b6; }
+    .edit-mode-btn {
+      position: fixed;
+      top: 90px;
+      right: 60px;
+      z-index: 1000;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--sand);
+      color: var(--sea);
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      transition: background 0.2s, transform 0.1s;
+    }
+    .edit-mode-btn:hover {
+      background: #e8e4d0;
+    }
+    .edit-mode-btn.active {
+      background: var(--accent);
+      color: white;
+    }
+    .edit-mode-btn:active {
+      transform: scale(0.98);
+    }
+    .copy-code-btn {
+      position: fixed;
+      top: 90px;
+      right: 260px;
+      z-index: 1000;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--forest);
+      color: white;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      transition: background 0.2s, transform 0.1s;
+    }
+    .copy-code-btn:hover {
+      background: #2d6a4f;
+    }
+    .copy-code-btn:active {
+      transform: scale(0.98);
+    }
+    .copy-code-btn.copied {
+      background: #2d6a4f;
+    }
+    .load-from-code-btn {
+      position: fixed;
+      top: 90px;
+      right: 430px;
+      z-index: 1000;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #1d3557;
+      color: var(--sand);
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      transition: background 0.2s, transform 0.1s;
+    }
+    .load-from-code-btn:hover {
+      background: #2d4a6f;
+    }
+    .load-from-code-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* Скрытые кнопки разработчика */
+    .dev-controls {
+      display: none;
+    }
+    body.dev-mode .dev-controls {
+      display: inline-block;
+    }
+    /* Чуть сдвинем, чтобы не мешали */
+    body.dev-mode .edit-mode-btn { right: 60px; }
+    body.dev-mode .copy-code-btn { right: 260px; }
+    body.dev-mode .load-from-code-btn { right: 430px; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>🏔️ Приморский край — достопримечательности</h1>
+    <p id="map-hint">Клик по маркеру — описание места. Масштабируйте и перемещайте карту.</p>
+    <div class="coords-panel">
+      <input id="coordsInput" inputmode="decimal" autocomplete="off" placeholder="Координаты: 43.12, 131.90" />
+      <button type="button" id="goToCoordsBtn">Показать</button>
+      <span class="coords-error" id="coordsError" style="display:none"></span>
+    </div>
+  </header>
+  <button type="button" class="edit-mode-btn dev-controls" id="editModeBtn" title="Включить режим редактирования — перетаскивайте маркеры зажатой ЛКМ">Режим редактирования</button>
+  <button type="button" class="load-from-code-btn dev-controls" id="loadFromCodeBtn" title="Сбросить сохранённые данные и загрузить все точки из кода (появится полный список, включая новые)">Загрузить точки из кода</button>
+  <button type="button" class="copy-code-btn dev-controls" id="copyCodeBtn" title="Скопировать массив attractions в буфер — вставьте в код и сохраните файл">Скопировать код</button>
+  <div id="map"></div>
+  <div class="legend">
+    <h3>Категории</h3>
+    <div class="legend-item"><span class="legend-dot nature"></span> Природа</div>
+    <div class="legend-item"><span class="legend-dot culture"></span> Культура</div>
+    <div class="legend-item"><span class="legend-dot urban"></span> Город</div>
+    <div class="legend-item"><span class="legend-dot coast"></span> Побережье</div>
+    <div class="map-attribution">
+      &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>
+    </div>
+  </div>
+
+  <script>
+      // Скрытые кнопки разработчика: Ctrl+Shift+D (вкл/выкл) + запоминание
+      const DEV_MODE_STORAGE_KEY = 'primorye-map-dev-mode';
+      function setDevMode(on) {
+        document.body.classList.toggle('dev-mode', !!on);
+        try { localStorage.setItem(DEV_MODE_STORAGE_KEY, on ? '1' : '0'); } catch (e) {}
+      }
+      (function initDevMode() {
+        let on = false;
+        try { on = localStorage.getItem(DEV_MODE_STORAGE_KEY) === '1'; } catch (e) {}
+        setDevMode(on);
+        window.addEventListener('keydown', (e) => {
+          // Не мешаем вводу в инпутах/textarea
+          const tag = (e.target && e.target.tagName) ? String(e.target.tagName).toLowerCase() : '';
+          const isTyping = tag === 'input' || tag === 'textarea';
+          if (isTyping) return;
+
+          if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd' || e.code === 'KeyD')) {
+            e.preventDefault();
+            setDevMode(!document.body.classList.contains('dev-mode'));
+          }
+        });
+      })();
+
+      const defaultAttractions = [
+  {
+    "name": "Мост на остров Русский",
+    "lat": 43.062491819469194,
+    "lng": 131.9067478179932,
+    "category": "urban",
+    "desc": "Один из крупнейших вантовых мостов в мире. Соединяет Владивосток с островом Русский. Высота пилонов — 320 м, длина — около 3,1 км. Построен к саммиту АТЭС 2012."
+  },
+  {
+    "name": "Набережная Спортивной гавани",
+    "lat": 43.11962416157867,
+    "lng": 131.87640666961673,
+    "category": "urban",
+    "desc": "Набережная от спорткомплекса «Олимпиец» до водной станции ТОФ. Прогулки, кафе, фонтан, вид на залив и мост на Русский."
+  },
+  {
+    "name": "Приморский океанариум",
+    "lat": 43.01426554675263,
+    "lng": 131.93022251129153,
+    "category": "culture",
+    "desc": "Крупный океанариум на острове Русский. Дельфинарий, туннель с акулами, экспозиции морской и пресноводной фауны Дальнего Востока."
+  },
+  {
+    "name": "Ботанический сад ДВО РАН",
+    "lat": 43.2615,
+    "lng": 132.097,
+    "category": "nature",
+    "desc": "Ботанический сад во Владивостоке (ул. Маковского, 142, район Седанка) с коллекцией растений Дальнего Востока и мира. Тропы, оранжереи."
+  },
+  {
+    "name": "Мыс Вятлина (остров Русский)",
+    "lat": 42.958683884926984,
+    "lng": 131.90752029418948,
+    "category": "coast",
+    "desc": "Живописный мыс на острове Русский. Скалы, бухты и панорамные виды на Японское море."
+  },
+  {
+    "name": "Национальный парк «Земля леопарда»",
+    "lat": 43.21818744408914,
+    "lng": 131.4445495605469,
+    "category": "nature",
+    "desc": "Заповедник для сохранения дальневосточного леопарда. Визит-центр в пос. Барабаш (Хасанский р-н). Экотропы, Кравцовские водопады."
+  },
+  {
+    "name": "Кравцовские водопады",
+    "lat": 43.4,
+    "lng": 131.48,
+    "category": "nature",
+    "desc": "Каскад из пяти водопадов в селе Кравцовка, Хасанский район (нацпарк «Земля леопарда»). Экотропа ~500 м, лестницы и видовые площадки."
+  },
+  {
+    "name": "Парк драконов (Чистоводное)",
+    "lat": 43.10023083967166,
+    "lng": 133.6909103393555,
+    "category": "nature",
+    "desc": "Природный парк в Лазовском районе с причудливыми скалами и формами рельефа. Пешие маршруты и виды."
+  },
+  {
+    "name": "Ущелье Дарданеллы",
+    "lat": 43.52,
+    "lng": 133.18,
+    "category": "nature",
+    "desc": "Узкое скальное ущелье в Партизанском районе. Популярный объект для походов и съёмок."
+  },
+  {
+    "name": "Остров Фуругельма",
+    "lat": 42.46842486478825,
+    "lng": 130.9194374084473,
+    "category": "coast",
+    "desc": "Остров в Хасанском районе. Заповедная территория, колонии птиц, чистое море и природа."
+  },
+  {
+    "name": "Курорт Андреевка",
+    "lat": 42.967,
+    "lng": 131.483,
+    "category": "coast",
+    "desc": "Пляжный курорт на побережье Хасанского района. Песчаные пляжи, базы отдыха и удобный заход в море."
+  },
+  {
+    "name": "Маяк Токаревская кошка",
+    "lat": 43.07330811754032,
+    "lng": 131.84291124343875,
+    "category": "culture",
+    "desc": "Исторический маяк на косе в проливе Босфор Восточный. Символ Владивостока и популярная точка для прогулок."
+  },
+  {
+    "name": "Бухта Золотой Рог",
+    "lat": 43.0974,
+    "lng": 131.87736,
+    "category": "urban",
+    "desc": "Центральная бухта Владивостока. Здесь расположены центр города, порт и знаменитый мост через бухту."
+  },
+  {
+    "name": "Музей им. В. К. Арсеньева",
+    "lat": 43.11633885138827,
+    "lng": 131.8821626901627,
+    "category": "culture",
+    "desc": "Крупнейший музей Приморья с коллекцией около 600 тысяч экспонатов. История, природа и культура Дальнего Востока с XIX века."
+  },
+  {
+    "name": "Подводная лодка С-56",
+    "lat": 43.113374480926886,
+    "lng": 131.89120173454288,
+    "category": "culture",
+    "desc": "Мемориальная подводная лодка-музей на Корабельной набережной. Участвовала в ВОВ, сохранён интерьер."
+  },
+  {
+    "name": "Корабль-музей «Красный Вымпел»",
+    "lat": 43.11256,
+    "lng": 131.89053,
+    "category": "culture",
+    "desc": "Сторожевой корабль 1911 года, музей на Корабельной набережной рядом с С-56. Один из первых кораблей советского ТОФ."
+  },
+  {
+    "name": "Золотой мост",
+    "lat": 43.109475,
+    "lng": 131.896333,
+    "category": "urban",
+    "desc": "Вантовый мост через бухту Золотой Рог. Длина 1388 м, пилоны 226 м, открыт в 2012 году. Один из символов Владивостока."
+  },
+  {
+    "name": "Орлиная сопка",
+    "lat": 43.12225541510577,
+    "lng": 131.89901769161227,
+    "category": "urban",
+    "desc": "Сопка Орлиное Гнездо (199 м), смотровая площадка. Вид на бухту Золотой Рог, Золотой и Русский мосты. Подъём на фуникулёре от Пушкинской."
+  },
+  {
+    "name": "Центр современного искусства «Заря»",
+    "lat": 43.205,
+    "lng": 131.968,
+    "category": "culture",
+    "desc": "Креативное пространство во Владивостоке: выставки, резиденции художников, кафе. Бывшая швейная фабрика."
+  },
+  {
+    "name": "Остров Попова",
+    "lat": 42.95,
+    "lng": 131.72,
+    "category": "coast",
+    "desc": "Остров в заливе Петра Великого в 20 км от Владивостока. Музей природы, пляжи, базы отдыха и морские прогулки."
+  },
+  {
+    "name": "Остров Путятина",
+    "lat": 42.847401273882944,
+    "lng": 132.42027282714847,
+    "category": "coast",
+    "desc": "Второй по площади остров Приморья в заливе Петра Великого. Озеро лотосов, руины фабрики, природа и пляжи."
+  },
+  {
+    "name": "Дальневосточный морской заповедник",
+    "lat": 42.88,
+    "lng": 131.72,
+    "category": "nature",
+    "desc": "Биосферный заповедник ЮНЕСКО в заливе Петра Великого. Острова, тюлени ларги, птичьи базары, уникальная морская флора и фауна."
+  },
+  {
+    "name": "Озеро Ханка",
+    "lat": 44.95,
+    "lng": 132.45,
+    "category": "nature",
+    "desc": "Крупнейшее пресноводное озеро Дальнего Востока на границе с Китаем. Ханкайский заповедник, птицы, лотосы и рыбалка."
+  },
+  {
+    "name": "Сихотэ-Алинский заповедник",
+    "lat": 45.26135531683859,
+    "lng": 136.21398925781253,
+    "category": "nature",
+    "desc": "Объект ЮНЕСКО в северном Приморье. Уссурийская тайга, амурский тигр, гора Облачная. Эко-маршруты и кордоны."
+  },
+  {
+    "name": "Национальный парк «Зов тигра»",
+    "lat": 43.58,
+    "lng": 134.25,
+    "category": "nature",
+    "desc": "Горные ландшафты Сихотэ-Алиня, реки и водопады. Обитают амурский тигр, рысь, гималайский медведь. Маршруты для туристов."
+  },
+  {
+    "name": "Беневские водопады",
+    "lat": 43.22894496172244,
+    "lng": 133.74275207519534,
+    "category": "nature",
+    "desc": "Каскад водопадов в Лазовском районе в долине реки Киевка. Живописная тайга и тропы для походов."
+  },
+  {
+    "name": "Мыс Тобизина (остров Русский)",
+    "lat": 42.94542853760973,
+    "lng": 131.87061309814456,
+    "category": "coast",
+    "desc": "Мыс на юге острова Русский с панорамными видами на Японское море. Скалы, бухты и дикие пляжи."
+  },
+  {
+    "name": "Приморская сцена Мариинского театра",
+    "lat": 43.10068,
+    "lng": 131.89845,
+    "category": "culture",
+    "desc": "Концертно-театральная площадка (ул. Фастовская, 20). Оперные и балетные постановки, симфонические концерты."
+  },
+  {
+    "name": "Гора Сестра",
+    "lat": 42.82744979075118,
+    "lng": 132.99387931823733,
+    "category": "nature",
+    "desc": "Сопка высотой 320 м у Находки, древний риф возрастом около 250 млн лет из белого известняка. Памятник природы, визитная карточка Находки. Тропа от бухты Лашкевич, с вершины — вид на залив Находка и долину реки Партизанской. Рядом — гора Брат и скала Племянник."
+  },
+  {
+    "name": "Гора Брат",
+    "lat": 42.86,
+    "lng": 133.0189,
+    "category": "nature",
+    "desc": "Сопка высотой 242 м в Партизанском районе, у устья реки Партизанская (Сучан), рядом с горой Сестра. Древний риф ~250 млн лет из белого известняка. В середине XX века часть вершины срезали для строительства порта. Между Братом и Сестрой — холм Племянник."
+  },
+  {
+    "name": "Чжурчжэньская черепаха",
+    "lat": 43.7921146089701,
+    "lng": 131.94784730672836,
+    "category": "culture",
+    "desc": "Древняя каменная скульптура возрастом не менее 800 лет в парке ДОРА. Предположительно украшала погребальный комплекс полководца. Весит более 6 тонн — один из символов Уссурийска."
+  },
+  {
+    "name": "Уссурийский историко-краеведческий музей",
+    "lat": 43.7906062715695,
+    "lng": 131.96110109139101,
+    "category": "culture",
+    "desc": "Основан в 1916 году, расположен в здании школы 1897 года постройки. Экспозиции об истории региона с древнейших времён до XXI века: археология, быт XIX века."
+  },
+  {
+    "name": "Покровская церковь",
+    "lat": 43.79174144859237,
+    "lng": 131.96180282209107,
+    "category": "culture",
+    "desc": "Православный храм в Уссурийске. Один из религиозных и архитектурных памятников города."
+  },
+  {
+    "name": "Зоопарк «Чудесный»",
+    "lat": 43.7963698753248,
+    "lng": 131.82837972027468,
+    "category": "nature",
+    "desc": "Зоопарк в с. Борисовка, около 8 км от Уссурийска. Более 40 видов животных: тигры, медведи, олени, львы. Режим работы: 10:00–19:00."
+  },
+  {
+    "name": "Уссурийский заповедник",
+    "lat": 43.68,
+    "lng": 132.52,
+    "category": "nature",
+    "desc": "Основан в 1932 году, около 50 км к юго-востоку от Уссурийска. Музей уссурийской тайги, экотропы, богатая флора и фауна Приморья."
+  }
+];
+
+    const STORAGE_KEY = 'primorye-map-attractions';
+    let attractions;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) attractions = parsed;
+      }
+    } catch (e) {}
+    if (!attractions) attractions = defaultAttractions;
+
+    const categoryColors = {
+      nature: '#2d6a4f',
+      culture: '#9d4edd',
+      urban: '#e07a5f',
+      coast: '#0077b6'
+    };
+
+    const map = L.map('map', {
+      center: [43.25, 132.0],
+      zoom: 9,
+      zoomControl: false,
+      attributionControl: false
+    });
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      subdomains: 'abc',
+      // Leaflet создаёт <img> для тайлов; задаём referrerPolicy на уровне запросов к картинкам.
+      referrerPolicy: 'strict-origin-when-cross-origin',
+      maxZoom: 19
+    }).addTo(map);
+
+    let coordsMarker = null;
+    function parseCoords(raw) {
+      if (!raw) return null;
+      const cleaned = String(raw).trim().replace(/;/g, ',').replace(/\s+/g, ' ');
+      const m = cleaned.match(/(-?\d+(?:[.,]\d+)?)\s*[, ]\s*(-?\d+(?:[.,]\d+)?)/);
+      if (!m) return null;
+      const lat = Number(m[1].replace(',', '.'));
+      const lng = Number(m[2].replace(',', '.'));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+      return { lat, lng };
+    }
+
+    function showCoordsError(message) {
+      const el = document.getElementById('coordsError');
+      if (!message) {
+        el.style.display = 'none';
+        el.textContent = '';
+        return;
+      }
+      el.textContent = message;
+      el.style.display = 'inline';
+    }
+
+    function goToCoords() {
+      const input = document.getElementById('coordsInput');
+      const parsed = parseCoords(input.value);
+      if (!parsed) {
+        showCoordsError('Введите широту и долготу, например: 43.12, 131.90');
+        return;
+      }
+      showCoordsError('');
+      const latlng = [parsed.lat, parsed.lng];
+      if (!coordsMarker) {
+        coordsMarker = L.marker(latlng).addTo(map);
+      } else {
+        coordsMarker.setLatLng(latlng);
+      }
+      map.setView(latlng, Math.max(map.getZoom(), 14), { animate: true });
+      coordsMarker.bindPopup(`<b>Точка</b><br>lat: ${parsed.lat}<br>lng: ${parsed.lng}`).openPopup();
+    }
+
+    document.getElementById('goToCoordsBtn').addEventListener('click', goToCoords);
+    document.getElementById('coordsInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') goToCoords();
+    });
+
+    const iconConfig = (color) => ({
+      fillColor: color,
+      color: '#1d3557',
+      weight: 2,
+      fillOpacity: 0.9,
+      radius: 10
+    });
+
+    const categoryNames = { nature: 'Природа', culture: 'Культура', urban: 'Город', coast: 'Побережье' };
+    const categoryIds = ['nature', 'culture', 'urban', 'coast'];
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function buildPopupContent(a, index, withCategoryButtons) {
+      const hasCustomPhotos = Array.isArray(a.photos) && a.photos.some(Boolean);
+      const safeName = escapeHtml(a.name || '');
+      const safeDesc = escapeHtml(a.desc || '—');
+      let html = `
+        <div class="popup-title">${safeName}</div>
+        <div class="popup-desc">${safeDesc}</div>
+        <span class="popup-category">${categoryNames[a.category] || a.category}</span>
+        <div class="popup-photos-loading" data-photos-loading-for="${index}">Фото загружаются…</div>
+        <div class="popup-photos" data-photos-for="${index}"></div>
+      `;
+      if (withCategoryButtons) {
+        html += `
+          <div class="popup-categories">
+            <div class="popup-categories-label">Изменить категорию:</div>
+            ${categoryIds.map(cat => `
+              <button type="button" class="category-btn ${a.category === cat ? 'active' : ''}" data-category="${cat}" data-index="${index}">${categoryNames[cat]}</button>
+            `).join('')}
+          </div>
+        `;
+        html += `
+          <div class="popup-categories" style="margin-top:0.6rem">
+            <div class="popup-categories-label">Фото (2 ссылки):</div>
+            <input type="text" class="photo-url-input" data-photo-url-index="0" data-index="${index}" placeholder="URL фото 1" value="${(a.photos && a.photos[0]) ? String(a.photos[0]).replace(/"/g, '&quot;') : ''}" style="width:100%;margin:0.25rem 0;padding:0.35rem 0.5rem;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:0.8rem">
+            <input type="text" class="photo-url-input" data-photo-url-index="1" data-index="${index}" placeholder="URL фото 2" value="${(a.photos && a.photos[1]) ? String(a.photos[1]).replace(/"/g, '&quot;') : ''}" style="width:100%;margin:0.25rem 0;padding:0.35rem 0.5rem;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:0.8rem">
+            <div style="display:flex;gap:0.5rem;margin-top:0.35rem">
+              <button type="button" class="category-btn" data-save-photos="1" data-index="${index}" style="flex:1">Сохранить фото</button>
+              <button type="button" class="category-btn" data-reset-photos="1" data-index="${index}" style="flex:1;${hasCustomPhotos ? '' : 'opacity:0.6'}">Сбросить</button>
+            </div>
+          </div>
+        `;
+      }
+      return html;
+    }
+
+    const photosCache = new Map();
+    // "Подробнее" временно отключено
+    function getCommonsFileTitleFromPage(page) {
+      // Prefer canonical title if present; fallback to title.
+      return (page && (page.canonicaltitle || page.title)) || null;
+    }
+
+    function normalizeAttributionText(s) {
+      if (!s) return '';
+      return String(s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    }
+
+    async function fetchCommonsPhotos(placeName) {
+      const endpoint = 'https://commons.wikimedia.org/w/api.php';
+      const url = new URL(endpoint);
+      url.searchParams.set('action', 'query');
+      url.searchParams.set('generator', 'search');
+      url.searchParams.set('gsrsearch', placeName);
+      url.searchParams.set('gsrnamespace', '6'); // File:
+      url.searchParams.set('gsrlimit', '2');
+      url.searchParams.set('prop', 'imageinfo');
+      url.searchParams.set('iiprop', 'url|extmetadata');
+      url.searchParams.set('iiurlwidth', '640');
+      url.searchParams.set('format', 'json');
+      url.searchParams.set('origin', '*');
+
+      const res = await fetch(url.toString(), { method: 'GET' });
+      if (!res.ok) throw new Error('commons fetch failed');
+      const json = await res.json();
+      const pages = json && json.query && json.query.pages ? Object.values(json.query.pages) : [];
+
+      const out = [];
+      for (const p of pages) {
+        const ii = p && p.imageinfo && p.imageinfo[0];
+        if (!ii) continue;
+        const thumb = ii.thumburl || ii.url;
+        const fileDesc = ii.descriptionurl; // page on commons
+        const meta = ii.extmetadata || {};
+        const licenseShort = normalizeAttributionText(meta.LicenseShortName && meta.LicenseShortName.value);
+        const licenseUrl = (meta.LicenseUrl && meta.LicenseUrl.value) || '';
+        const artist = normalizeAttributionText(meta.Artist && meta.Artist.value);
+        const attributionRequired = String((meta.AttributionRequired && meta.AttributionRequired.value) || '').toLowerCase() === 'true';
+
+        out.push({
+          thumbUrl: thumb,
+          filePageUrl: fileDesc,
+          licenseShort,
+          licenseUrl,
+          artist,
+          attributionRequired
+        });
+      }
+
+      return out;
+    }
+
+    async function ensurePhotosLoaded(index) {
+      const a = attractions[index];
+      if (!a) return;
+      // Если пользователь задал фото вручную — используем их и не ходим в Commons.
+      if (Array.isArray(a.photos) && a.photos.some(Boolean)) {
+        const custom = a.photos
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((u) => ({
+            thumbUrl: String(u),
+            filePageUrl: '',
+            licenseShort: '',
+            licenseUrl: '',
+            artist: '',
+            attributionRequired: false
+          }));
+        photosCache.set(a.name, custom);
+        return;
+      }
+      if (photosCache.has(a.name)) return;
+      try {
+        const photos = await fetchCommonsPhotos(a.name);
+        photosCache.set(a.name, photos);
+      } catch (e) {
+        photosCache.set(a.name, []);
+      }
+    }
+
+    function renderPhotosIntoPopup(index) {
+      const a = attractions[index];
+      if (!a) return;
+      const photos = photosCache.get(a.name);
+      if (!photos) return;
+
+      const grid = document.querySelector(`[data-photos-for="${index}"]`);
+      const loading = document.querySelector(`[data-photos-loading-for="${index}"]`);
+      if (!grid) return;
+      if (loading) loading.style.display = 'none';
+
+      if (!photos.length) {
+        grid.innerHTML = '';
+        grid.classList.remove('single');
+        return;
+      }
+
+      const shown = photos.slice(0, 2);
+      if (shown.length === 1) grid.classList.add('single');
+      else grid.classList.remove('single');
+
+      grid.innerHTML = shown.map((p) => {
+        const isCustom = !p.filePageUrl && !p.licenseShort && !p.licenseUrl;
+        // Для пользовательских фото (вставленных вручную) атрибуцию не показываем.
+        // Для фото из Commons оставляем ссылку на страницу файла, где есть полная лицензия/атрибуция.
+        const caption = isCustom
+          ? ''
+          : (p.filePageUrl
+            ? `Источник: <a href="${p.filePageUrl}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>`
+            : '');
+        return `
+          <div class="popup-photo">
+            <img src="${p.thumbUrl}" alt="${a.name}">
+            ${caption ? `<div class="popup-photo-caption">${caption}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    let editMode = false;
+    let draggingMarker = null;
+    let draggingIndex = null;
+
+    const markers = [];
+    attractions.forEach((a, index) => {
+      const color = categoryColors[a.category] || '#666';
+      const marker = L.circleMarker([a.lat, a.lng], iconConfig(color))
+        .addTo(map)
+        .bindPopup(buildPopupContent(a, index, false));
+      marker._attractionIndex = index;
+      marker.on('popupopen', function() {
+        const idx = this._attractionIndex;
+        if (editMode) this.getPopup().setContent(buildPopupContent(attractions[idx], idx, true));
+        // Подгружаем 2 фото с Wikimedia Commons по названию места.
+        const popup = this.getPopup();
+        const container = popup && popup.getElement && popup.getElement();
+        if (!container) return;
+        (async () => {
+          await ensurePhotosLoaded(idx);
+          // Попап мог уже закрыться
+          if (!popup.isOpen()) return;
+          renderPhotosIntoPopup(idx);
+        })();
+      });
+      markers.push(marker);
+    });
+
+    function persistAttractions() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(attractions));
+      } catch (e) {}
+    }
+
+    function isValidHttpUrl(value) {
+      try {
+        const u = new URL(String(value));
+        return u.protocol === 'http:' || u.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }
+
+    // Делегирование кликов внутри попапа (кнопки редактирования фото)
+    map.on('popupopen', (e) => {
+      const popupEl = e.popup && e.popup.getElement && e.popup.getElement();
+      if (!popupEl) return;
+
+      // Не вешаем обработчик повторно на один и тот же DOM-элемент попапа
+      if (popupEl.dataset && popupEl.dataset.photosEditorBound === '1') return;
+      if (popupEl.dataset) popupEl.dataset.photosEditorBound = '1';
+
+      popupEl.addEventListener('click', async (evt) => {
+        const t = evt.target;
+        if (!(t instanceof HTMLElement)) return;
+
+        const saveBtn = t.closest('[data-save-photos="1"]');
+        const resetBtn = t.closest('[data-reset-photos="1"]');
+        const idxStr = (saveBtn || resetBtn) && (saveBtn || resetBtn).getAttribute('data-index');
+        if (!idxStr) return;
+        const idx = Number(idxStr);
+        if (!Number.isFinite(idx) || !attractions[idx]) return;
+
+        if (saveBtn) {
+          const inputs = popupEl.querySelectorAll(`.photo-url-input[data-index="${idx}"]`);
+          const urls = [];
+          inputs.forEach((inp) => {
+            const v = (inp && inp.value) ? inp.value.trim() : '';
+            urls.push(v);
+          });
+          const normalized = urls
+            .map((u) => (u ? u : ''))
+            .map((u) => (u && isValidHttpUrl(u) ? u : ''));
+
+          attractions[idx].photos = normalized;
+          photosCache.delete(attractions[idx].name);
+          persistAttractions();
+
+          await ensurePhotosLoaded(idx);
+          renderPhotosIntoPopup(idx);
+        }
+
+        if (resetBtn) {
+          delete attractions[idx].photos;
+          photosCache.delete(attractions[idx].name);
+          persistAttractions();
+
+          await ensurePhotosLoaded(idx);
+          renderPhotosIntoPopup(idx);
+        }
+      });
+    });
+
+    function setEditMode(on) {
+      editMode = on;
+      const btn = document.getElementById('editModeBtn');
+      const hint = document.getElementById('map-hint');
+      if (on) {
+        btn.classList.add('active');
+        btn.textContent = 'Выключить редактирование';
+        hint.textContent = 'Клик по карте — новая точка. По маркеру — смена категории. Перетащить — ЛКМ. Удалить — ПКМ.';
+      } else {
+        btn.classList.remove('active');
+        btn.textContent = 'Режим редактирования';
+        hint.textContent = 'Клик по маркеру — описание места. Масштабируйте и перемещайте карту.';
+      }
+    }
+
+    document.getElementById('editModeBtn').addEventListener('click', () => setEditMode(!editMode));
+
+    function createMarker(a, index) {
+      const color = categoryColors[a.category] || '#666';
+      const marker = L.circleMarker([a.lat, a.lng], iconConfig(color))
+        .addTo(map)
+        .bindPopup(buildPopupContent(a, index, false));
+      marker._attractionIndex = index;
+      marker.on('popupopen', function() {
+        if (editMode) this.getPopup().setContent(buildPopupContent(attractions[this._attractionIndex], this._attractionIndex, true));
+      });
+      marker.on('mousedown', onMarkerMouseDown);
+      marker.on('contextmenu', onMarkerContextMenu);
+      return marker;
+    }
+
+    document.body.addEventListener('click', (e) => {
+      const btn = e.target.closest('.category-btn');
+      if (!btn || !editMode) return;
+      e.preventDefault();
+      const index = parseInt(btn.dataset.index, 10);
+      const cat = btn.dataset.category;
+      if (index < 0 || index >= attractions.length || !categoryColors[cat]) return;
+      attractions[index].category = cat;
+      const marker = markers[index];
+      marker.setStyle(iconConfig(categoryColors[cat]));
+      marker.getPopup().setContent(buildPopupContent(attractions[index], index, true));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(attractions));
+      } catch (err) {}
+    });
+
+    function onMapClick(e) {
+      if (!editMode) return;
+      const name = prompt('Название новой точки:', 'Новая точка');
+      if (name === null) return;
+      const a = {
+        name: name.trim() || 'Новая точка',
+        lat: e.latlng.lat,
+        lng: e.latlng.lng,
+        category: 'nature',
+        desc: ''
+      };
+      attractions.push(a);
+      const index = attractions.length - 1;
+      const marker = createMarker(a, index);
+      markers.push(marker);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(attractions));
+      } catch (err) {}
+    }
+
+    map.on('click', onMapClick);
+
+    function onMarkerMouseDown(e) {
+      if (!editMode) return;
+      L.DomEvent.stopPropagation(e);
+      L.DomEvent.preventDefault(e);
+      draggingMarker = e.target;
+      draggingIndex = e.target._attractionIndex;
+      map.dragging.disable();
+      map.on('mousemove', onMapMouseMove);
+      map.once('mouseup', onMapMouseUp);
+      document.addEventListener('mouseup', onMapMouseUp);
+    }
+
+    function onMapMouseMove(e) {
+      if (!draggingMarker) return;
+      const latlng = map.mouseEventToLatLng(e.originalEvent);
+      draggingMarker.setLatLng(latlng);
+    }
+
+    function onMapMouseUp() {
+      if (draggingMarker !== null && draggingIndex !== null) {
+        const latlng = draggingMarker.getLatLng();
+        attractions[draggingIndex].lat = latlng.lat;
+        attractions[draggingIndex].lng = latlng.lng;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(attractions));
+        } catch (e) {}
+      }
+      draggingMarker = null;
+      draggingIndex = null;
+      map.dragging.enable();
+      map.off('mousemove', onMapMouseMove);
+      map.off('mouseup', onMapMouseUp);
+      document.removeEventListener('mouseup', onMapMouseUp);
+    }
+
+    document.getElementById('loadFromCodeBtn').addEventListener('click', () => {
+      if (confirm('Сбросить сохранённые точки и загрузить полный список из кода? Текущие сдвиги маркеров будут потеряны.')) {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (e) {}
+        location.reload();
+      }
+    });
+
+    document.getElementById('copyCodeBtn').addEventListener('click', () => {
+      const code = '    const defaultAttractions = ' + JSON.stringify(attractions, null, 2) + ';';
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('copyCodeBtn');
+        btn.textContent = 'Скопировано!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Скопировать код';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    });
+
+    function deleteMarker(marker, index) {
+      if (draggingMarker === marker) {
+        draggingMarker = null;
+        draggingIndex = null;
+        map.dragging.enable();
+        map.off('mousemove', onMapMouseMove);
+        document.removeEventListener('mouseup', onMapMouseUp);
+      }
+      marker.remove();
+      markers.splice(index, 1);
+      attractions.splice(index, 1);
+      for (let i = index; i < markers.length; i++) markers[i]._attractionIndex = i;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(attractions));
+      } catch (e) {}
+    }
+
+    function onMarkerContextMenu(e) {
+      if (!editMode) return;
+      L.DomEvent.preventDefault(e);
+      const marker = e.target;
+      const index = marker._attractionIndex;
+      if (!confirm('Удалить точку «' + (attractions[index]?.name || '') + '»?')) return;
+      deleteMarker(marker, index);
+    }
+
+    markers.forEach(m => {
+      m.on('mousedown', onMarkerMouseDown);
+      m.on('contextmenu', onMarkerContextMenu);
+    });
+
+    map.fitBounds(attractions.map(a => [a.lat, a.lng]), { padding: [40, 40], maxZoom: 8 });
+  </script>
+</body>
+</html>
