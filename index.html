@@ -245,10 +245,43 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
       font-size: 0.8rem;
     }
+    .legend-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .legend-close-btn {
+      display: none;
+      border: none;
+      background: transparent;
+      color: #555;
+      font-size: 1.2rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 0.15rem;
+    }
     .legend h3 {
       margin-bottom: 0.5rem;
       color: var(--sea);
       font-size: 0.9rem;
+    }
+    .category-toggle-btn {
+      display: none;
+      position: fixed;
+      left: 8px;
+      bottom: 64px;
+      z-index: 1100;
+      padding: 0.42rem 0.65rem;
+      border: none;
+      border-radius: 8px;
+      background: #1d3557;
+      color: var(--sand);
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+      font-size: 0.72rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+      cursor: pointer;
     }
     .legend .map-attribution {
       margin-top: 0.75rem;
@@ -360,7 +393,7 @@
     .clear-cache-btn {
       position: fixed;
       top: 90px;
-      right: 590px;
+      right: 12px;
       z-index: 1000;
       padding: 0.5rem 0.9rem;
       border: none;
@@ -372,7 +405,7 @@
       font-size: 0.8rem;
       cursor: pointer;
       box-shadow: 0 2px 12px rgba(0,0,0,0.2);
-      transition: background 0.2s, transform 0.1s;
+      transition: background 0.2s, transform 0.1s, bottom 0.2s, right 0.2s;
     }
     .clear-cache-btn:hover {
       background: #922837;
@@ -535,8 +568,27 @@
         margin: 0.16rem 0 !important;
         border-radius: 7px !important;
       }
+      .category-toggle-btn {
+        display: block;
+      }
       .legend {
+        display: none;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        max-height: 58vh;
+        overflow: auto;
         font-size: 0.72rem;
+        z-index: 1095;
+      }
+      .legend.mobile-open {
+        display: block;
+      }
+      .legend-close-btn {
+        display: inline-block;
+      }
+      .legend h3 {
+        margin-bottom: 0.35rem;
       }
       .legend .map-attribution {
         display: none;
@@ -573,9 +625,13 @@
   <button type="button" class="load-from-code-btn dev-controls" id="loadFromCodeBtn" title="Сбросить сохранённые данные и загрузить все точки из кода (появится полный список, включая новые)">Загрузить точки из кода</button>
   <button type="button" class="copy-code-btn dev-controls" id="copyCodeBtn" title="Скопировать массив attractions в буфер — вставьте в код и сохраните файл">Скопировать код</button>
   <button type="button" class="clear-cache-btn" id="clearCacheBtn" title="Очистить кэш и локальные данные этого сайта, затем перезагрузить">Обновить сайт</button>
+  <button type="button" class="category-toggle-btn" id="toggleLegendBtn" title="Показать категории">Категории</button>
   <div id="map"></div>
   <div class="legend">
-    <h3>Категории</h3>
+    <div class="legend-header">
+      <h3>Категории</h3>
+      <button type="button" class="legend-close-btn" id="legendCloseBtn" aria-label="Закрыть категории">×</button>
+    </div>
     <div class="legend-item"><span class="legend-dot nature"></span> Природа</div>
     <div class="legend-item"><span class="legend-dot culture"></span> Культура</div>
     <div class="legend-item"><span class="legend-dot urban"></span> Город</div>
@@ -1019,6 +1075,63 @@
       if (e.key === 'Enter') goToCoords();
     });
 
+    const legendEl = document.querySelector('.legend');
+    const toggleLegendBtn = document.getElementById('toggleLegendBtn');
+    const legendCloseBtn = document.getElementById('legendCloseBtn');
+    const clearCacheBtn = document.getElementById('clearCacheBtn');
+    function updateMobileButtonPositions() {
+      if (!clearCacheBtn || !legendEl) return;
+      const isMobile = window.matchMedia('(max-width: 600px)').matches;
+      if (!isMobile) {
+        clearCacheBtn.style.bottom = '';
+        clearCacheBtn.style.right = '';
+        return;
+      }
+      const legendOpen = legendEl.classList.contains('mobile-open');
+      if (!legendOpen) {
+        clearCacheBtn.style.bottom = '64px';
+        clearCacheBtn.style.right = '8px';
+        return;
+      }
+      const gap = 12;
+      const lifted = Math.max(64, legendEl.offsetHeight + gap);
+      clearCacheBtn.style.bottom = lifted + 'px';
+      clearCacheBtn.style.right = '8px';
+    }
+    function setMobileLegendOpen(open) {
+      if (!legendEl || !toggleLegendBtn) return;
+      const isMobile = window.matchMedia('(max-width: 600px)').matches;
+      if (!isMobile) {
+        legendEl.classList.remove('mobile-open');
+        toggleLegendBtn.textContent = 'Категории';
+        updateMobileButtonPositions();
+        return;
+      }
+      legendEl.classList.toggle('mobile-open', !!open);
+      toggleLegendBtn.textContent = open ? 'Скрыть категории' : 'Категории';
+      updateMobileButtonPositions();
+    }
+    if (toggleLegendBtn) {
+      toggleLegendBtn.addEventListener('click', (evt) => {
+        evt.preventDefault();
+        evt.stopPropagation();
+        const willOpen = !legendEl.classList.contains('mobile-open');
+        setMobileLegendOpen(willOpen);
+      });
+    }
+    if (legendCloseBtn) {
+      legendCloseBtn.addEventListener('click', (evt) => {
+        evt.preventDefault();
+        evt.stopPropagation();
+        setMobileLegendOpen(false);
+      });
+    }
+    window.addEventListener('resize', () => {
+      if (!window.matchMedia('(max-width: 600px)').matches) setMobileLegendOpen(false);
+      updateMobileButtonPositions();
+    });
+    updateMobileButtonPositions();
+
     async function clearSiteCacheAndReload() {
       const ok = confirm('Очистить кэш и локальные данные этого сайта, затем перезагрузить страницу?');
       if (!ok) return;
@@ -1420,6 +1533,9 @@
     }
 
     map.on('click', onMapClick);
+    map.on('click', () => {
+      if (window.matchMedia('(max-width: 600px)').matches) setMobileLegendOpen(false);
+    });
 
     function onMarkerMouseDown(e) {
       if (!editMode) return;
