@@ -357,6 +357,29 @@
     .load-from-code-btn:active {
       transform: scale(0.98);
     }
+    .clear-cache-btn {
+      position: fixed;
+      top: 90px;
+      right: 590px;
+      z-index: 1000;
+      padding: 0.5rem 0.9rem;
+      border: none;
+      border-radius: 8px;
+      background: #7a1f2a;
+      color: #fff;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      transition: background 0.2s, transform 0.1s;
+    }
+    .clear-cache-btn:hover {
+      background: #922837;
+    }
+    .clear-cache-btn:active {
+      transform: scale(0.98);
+    }
 
     /* Скрытые кнопки разработчика */
     .dev-controls {
@@ -400,6 +423,14 @@
       .coords-panel button {
         height: 36px;
       }
+      .clear-cache-btn {
+        top: auto;
+        bottom: 72px;
+        right: 10px;
+        left: auto;
+        font-size: 0.75rem;
+        padding: 0.45rem 0.7rem;
+      }
       .legend {
         left: 10px;
         right: 10px;
@@ -433,17 +464,26 @@
       .header {
         padding: 0.7rem 0.7rem;
       }
+      .coords-panel {
+        display: none;
+      }
       .header h1 {
         font-size: 0.95rem;
       }
       .header p {
         font-size: 0.72rem;
       }
+      .clear-cache-btn {
+        bottom: 64px;
+        right: 8px;
+        font-size: 0.7rem;
+        padding: 0.4rem 0.6rem;
+      }
       #map {
-        top: 152px;
+        top: 106px;
       }
       #map .leaflet-control-zoom {
-        margin-top: 156px;
+        margin-top: 110px;
       }
       .leaflet-popup-content {
         margin: 0.75rem 0.85rem;
@@ -532,6 +572,7 @@
   <button type="button" class="edit-mode-btn dev-controls" id="editModeBtn" title="Включить режим редактирования — перетаскивайте маркеры зажатой ЛКМ">Режим редактирования</button>
   <button type="button" class="load-from-code-btn dev-controls" id="loadFromCodeBtn" title="Сбросить сохранённые данные и загрузить все точки из кода (появится полный список, включая новые)">Загрузить точки из кода</button>
   <button type="button" class="copy-code-btn dev-controls" id="copyCodeBtn" title="Скопировать массив attractions в буфер — вставьте в код и сохраните файл">Скопировать код</button>
+  <button type="button" class="clear-cache-btn" id="clearCacheBtn" title="Очистить кэш и локальные данные этого сайта, затем перезагрузить">Обновить сайт</button>
   <div id="map"></div>
   <div class="legend">
     <h3>Категории</h3>
@@ -977,6 +1018,33 @@
     document.getElementById('coordsInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') goToCoords();
     });
+
+    async function clearSiteCacheAndReload() {
+      const ok = confirm('Очистить кэш и локальные данные этого сайта, затем перезагрузить страницу?');
+      if (!ok) return;
+      try {
+        localStorage.clear();
+      } catch (e) {}
+      try {
+        sessionStorage.clear();
+      } catch (e) {}
+      try {
+        if (window.caches && caches.keys) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+      } catch (e) {}
+      try {
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister()));
+        }
+      } catch (e) {}
+      const u = new URL(window.location.href);
+      u.searchParams.set('v', String(Date.now()));
+      window.location.replace(u.toString());
+    }
+    document.getElementById('clearCacheBtn').addEventListener('click', clearSiteCacheAndReload);
 
     const iconConfig = (color) => ({
       fillColor: color,
