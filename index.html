@@ -349,6 +349,104 @@
     body.dev-mode .edit-mode-btn { right: 60px; }
     body.dev-mode .copy-code-btn { right: 260px; }
     body.dev-mode .load-from-code-btn { right: 430px; }
+
+    @media (max-width: 900px) {
+      .header {
+        padding: 0.75rem 0.9rem;
+      }
+      .header h1 {
+        font-size: 1.05rem;
+        letter-spacing: normal;
+      }
+      .header p {
+        font-size: 0.78rem;
+      }
+      #map {
+        top: 132px;
+        border-radius: 12px 12px 0 0;
+      }
+      #map .leaflet-control-zoom {
+        margin-top: 136px;
+        margin-right: 10px;
+      }
+      .coords-panel {
+        gap: 0.4rem;
+      }
+      .coords-panel input {
+        flex: 1 1 100%;
+        min-width: 0;
+        width: 100%;
+      }
+      .coords-panel button {
+        height: 36px;
+      }
+      .legend {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        padding: 0.65rem 0.8rem;
+        border-radius: 10px;
+      }
+      .legend h3 {
+        font-size: 0.82rem;
+        margin-bottom: 0.35rem;
+      }
+      .legend-item {
+        margin: 0.15rem 0;
+      }
+      .leaflet-popup-content-wrapper {
+        max-width: min(420px, 92vw);
+      }
+      .popup-photo img {
+        height: 150px;
+      }
+      .popup-photos.single .popup-photo img {
+        height: 200px;
+      }
+      .category-btn {
+        min-height: 34px;
+        font-size: 0.8rem;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .header {
+        padding: 0.7rem 0.7rem;
+      }
+      .header h1 {
+        font-size: 0.95rem;
+      }
+      .header p {
+        font-size: 0.72rem;
+      }
+      #map {
+        top: 152px;
+      }
+      #map .leaflet-control-zoom {
+        margin-top: 156px;
+      }
+      .leaflet-popup-content {
+        margin: 0.75rem 0.85rem;
+      }
+      .popup-title {
+        font-size: 1rem;
+      }
+      .popup-desc {
+        font-size: 0.84rem;
+      }
+      .popup-photos {
+        grid-template-columns: 1fr;
+      }
+      .popup-photo img {
+        height: 170px;
+      }
+      .legend {
+        font-size: 0.72rem;
+      }
+      .legend .map-attribution {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
