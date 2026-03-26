@@ -1214,6 +1214,10 @@
     map.on('popupopen', (e) => {
       const popupEl = e.popup && e.popup.getElement && e.popup.getElement();
       if (!popupEl) return;
+      if (L && L.DomEvent) {
+        L.DomEvent.disableClickPropagation(popupEl);
+        L.DomEvent.disableScrollPropagation(popupEl);
+      }
 
       // Не вешаем обработчик повторно на один и тот же DOM-элемент попапа
       if (popupEl.dataset && popupEl.dataset.photosEditorBound === '1') return;
@@ -1225,6 +1229,8 @@
 
         const expandBtn = t.closest('[data-expand-popup]');
         if (expandBtn) {
+          evt.preventDefault();
+          evt.stopPropagation();
           const expandIdx = Number(expandBtn.getAttribute('data-expand-popup'));
           if (!Number.isFinite(expandIdx) || !attractions[expandIdx]) return;
           const details = popupEl.querySelector(`[data-popup-details="${expandIdx}"]`);
