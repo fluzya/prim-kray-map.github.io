@@ -114,6 +114,7 @@
       border-left: 4px solid var(--accent);
       font-family: 'Montserrat', sans-serif;
       max-width: 440px;
+      touch-action: pan-x pan-y;
     }
     .leaflet-popup-content {
       margin: 1rem 1.25rem;
@@ -195,6 +196,9 @@
       color: #666;
       margin-bottom: 0.35rem;
     }
+    .photo-url-input {
+      touch-action: manipulation;
+    }
     .category-btn {
       display: inline-block;
       margin: 0.2rem 0.2rem 0 0;
@@ -213,6 +217,22 @@
       border-color: var(--sea);
       background: var(--sand);
       font-weight: 600;
+    }
+    .popup-expand-btn {
+      margin-top: 0.55rem;
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid #d8d8d8;
+      border-radius: 8px;
+      background: #f7f7f7;
+      color: #2b2b2b;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .popup-expand-btn:active {
+      transform: scale(0.99);
     }
     .legend {
       position: fixed;
@@ -428,23 +448,73 @@
       .leaflet-popup-content {
         margin: 0.75rem 0.85rem;
       }
+      .leaflet-popup-content-wrapper {
+        max-width: min(340px, 90vw);
+        border-left-width: 3px;
+      }
       .popup-title {
-        font-size: 1rem;
+        font-size: 0.92rem;
+        margin-bottom: 0.35rem;
       }
       .popup-desc {
-        font-size: 0.84rem;
+        font-size: 0.76rem;
+        line-height: 1.35;
+      }
+      .popup-category {
+        font-size: 0.68rem;
+        padding: 0.15rem 0.45rem;
+      }
+      .popup-categories {
+        margin-top: 0.5rem;
+        padding-top: 0.4rem;
+      }
+      .popup-categories-label {
+        font-size: 0.68rem;
+        margin-bottom: 0.25rem;
       }
       .popup-photos {
         grid-template-columns: 1fr;
+        gap: 0.35rem;
       }
       .popup-photo img {
-        height: 170px;
+        height: 140px;
+      }
+      .category-btn {
+        min-height: 28px;
+        font-size: 0.7rem;
+        padding: 0.18rem 0.38rem;
+        margin: 0.14rem 0.14rem 0 0;
+      }
+      .popup-expand-btn {
+        min-height: 30px;
+        font-size: 0.72rem;
+      }
+      .photo-url-input {
+        font-size: 0.72rem !important;
+        padding: 0.2rem 0.38rem !important;
+        margin: 0.16rem 0 !important;
+        border-radius: 7px !important;
       }
       .legend {
         font-size: 0.72rem;
       }
       .legend .map-attribution {
         display: none;
+      }
+    }
+
+    /* Разрешаем тянуть карту за "пустые" зоны попапа на тач-устройствах */
+    @media (hover: none) and (pointer: coarse) {
+      .leaflet-popup-content-wrapper,
+      .leaflet-popup-tip {
+        pointer-events: none;
+      }
+      .leaflet-popup-content,
+      .leaflet-popup-content * {
+        pointer-events: auto;
+      }
+      .leaflet-popup-close-button {
+        pointer-events: auto;
       }
     }
   </style>
@@ -928,16 +998,20 @@
         .replace(/'/g, '&#039;');
     }
 
-    function buildPopupContent(a, index, withCategoryButtons) {
+    function buildPopupContent(a, index, withCategoryButtons, compactMode) {
       const hasCustomPhotos = Array.isArray(a.photos) && a.photos.some(Boolean);
       const safeName = escapeHtml(a.name || '');
       const safeDesc = escapeHtml(a.desc || '—');
+      const compact = !!compactMode && !withCategoryButtons;
       let html = `
         <div class="popup-title">${safeName}</div>
-        <div class="popup-desc">${safeDesc}</div>
         <span class="popup-category">${categoryNames[a.category] || a.category}</span>
-        <div class="popup-photos-loading" data-photos-loading-for="${index}">Фото загружаются…</div>
-        <div class="popup-photos" data-photos-for="${index}"></div>
+        ${compact ? `<button type="button" class="popup-expand-btn" data-expand-popup="${index}">Развернуть</button>` : ''}
+        <div class="popup-details" data-popup-details="${index}" style="${compact ? 'display:none' : ''}">
+          <div class="popup-desc">${safeDesc}</div>
+          <div class="popup-photos-loading" data-photos-loading-for="${index}">Фото загружаются…</div>
+          <div class="popup-photos" data-photos-for="${index}"></div>
+        </div>
       `;
       if (withCategoryButtons) {
         html += `
@@ -1101,11 +1175,12 @@
       const color = categoryColors[a.category] || '#666';
       const marker = L.circleMarker([a.lat, a.lng], iconConfig(color))
         .addTo(map)
-        .bindPopup(buildPopupContent(a, index, false));
+        .bindPopup(buildPopupContent(a, index, false, false));
       marker._attractionIndex = index;
       marker.on('popupopen', function() {
         const idx = this._attractionIndex;
-        if (editMode) this.getPopup().setContent(buildPopupContent(attractions[idx], idx, true));
+        const compact = !editMode && window.matchMedia('(max-width: 600px)').matches;
+        this.getPopup().setContent(buildPopupContent(attractions[idx], idx, editMode, compact));
         // Подгружаем 2 фото с Wikimedia Commons по названию места.
         const popup = this.getPopup();
         const container = popup && popup.getElement && popup.getElement();
@@ -1147,6 +1222,16 @@
       popupEl.addEventListener('click', async (evt) => {
         const t = evt.target;
         if (!(t instanceof HTMLElement)) return;
+
+        const expandBtn = t.closest('[data-expand-popup]');
+        if (expandBtn) {
+          const expandIdx = Number(expandBtn.getAttribute('data-expand-popup'));
+          if (!Number.isFinite(expandIdx) || !attractions[expandIdx]) return;
+          const details = popupEl.querySelector(`[data-popup-details="${expandIdx}"]`);
+          if (details) details.style.display = '';
+          expandBtn.remove();
+          return;
+        }
 
         const saveBtn = t.closest('[data-save-photos="1"]');
         const resetBtn = t.closest('[data-reset-photos="1"]');
@@ -1206,10 +1291,12 @@
       const color = categoryColors[a.category] || '#666';
       const marker = L.circleMarker([a.lat, a.lng], iconConfig(color))
         .addTo(map)
-        .bindPopup(buildPopupContent(a, index, false));
+        .bindPopup(buildPopupContent(a, index, false, false));
       marker._attractionIndex = index;
       marker.on('popupopen', function() {
-        if (editMode) this.getPopup().setContent(buildPopupContent(attractions[this._attractionIndex], this._attractionIndex, true));
+        const idx = this._attractionIndex;
+        const compact = !editMode && window.matchMedia('(max-width: 600px)').matches;
+        this.getPopup().setContent(buildPopupContent(attractions[idx], idx, editMode, compact));
       });
       marker.on('mousedown', onMarkerMouseDown);
       marker.on('contextmenu', onMarkerContextMenu);
