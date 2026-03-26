@@ -1217,6 +1217,11 @@
       if (L && L.DomEvent) {
         L.DomEvent.disableClickPropagation(popupEl);
         L.DomEvent.disableScrollPropagation(popupEl);
+        // На мобильных устройствах закрытие попапа часто прилетает через touch/pointer.
+        L.DomEvent.on(popupEl, 'touchstart', L.DomEvent.stopPropagation);
+        L.DomEvent.on(popupEl, 'touchend', L.DomEvent.stopPropagation);
+        L.DomEvent.on(popupEl, 'pointerdown', L.DomEvent.stopPropagation);
+        L.DomEvent.on(popupEl, 'pointerup', L.DomEvent.stopPropagation);
       }
 
       // Не вешаем обработчик повторно на один и тот же DOM-элемент попапа
@@ -1231,6 +1236,7 @@
         if (expandBtn) {
           evt.preventDefault();
           evt.stopPropagation();
+          if (evt.stopImmediatePropagation) evt.stopImmediatePropagation();
           const expandIdx = Number(expandBtn.getAttribute('data-expand-popup'));
           if (!Number.isFinite(expandIdx) || !attractions[expandIdx]) return;
           const details = popupEl.querySelector(`[data-popup-details="${expandIdx}"]`);
