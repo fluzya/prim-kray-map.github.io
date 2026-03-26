@@ -109,10 +109,6 @@
       margin-right: 12px;
       margin-bottom: 18px;
     }
-    #map .leaflet-control-scale {
-      margin-right: 12px;
-      margin-bottom: 8px;
-    }
     .leaflet-popup-content-wrapper {
       border-radius: 12px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.2);
@@ -456,10 +452,6 @@
         margin-right: 10px;
         margin-bottom: 18px;
       }
-      #map .leaflet-control-scale {
-        margin-right: 10px;
-        margin-bottom: 8px;
-      }
       .coords-panel {
         gap: 0.4rem;
       }
@@ -532,11 +524,7 @@
       }
       #map .leaflet-control-zoom {
         margin-right: 8px;
-        margin-bottom: 124px;
-      }
-      #map .leaflet-control-scale {
-        margin-right: 8px;
-        margin-bottom: 70px;
+        margin-bottom: 88px;
       }
       .leaflet-popup-content {
         margin: 0.75rem 0.85rem;
@@ -1040,12 +1028,6 @@
       attributionControl: false
     });
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-    L.control.scale({
-      position: 'bottomright',
-      metric: true,
-      imperial: false,
-      maxWidth: 100
-    }).addTo(map);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       subdomains: 'abc',
@@ -1108,7 +1090,6 @@
     function updateMobileButtonPositions() {
       if (!clearCacheBtn || !legendEl || !toggleLegendBtn) return;
       const zoomControlEl = document.querySelector('#map .leaflet-control-zoom');
-      const scaleControlEl = document.querySelector('#map .leaflet-control-scale');
       const isMobile = window.matchMedia('(max-width: 600px)').matches;
       if (!isMobile) {
         clearCacheBtn.style.bottom = '';
@@ -1116,7 +1097,6 @@
         toggleLegendBtn.style.bottom = '';
         toggleLegendBtn.style.left = '';
         if (zoomControlEl) zoomControlEl.style.marginBottom = '';
-        if (scaleControlEl) scaleControlEl.style.marginBottom = '';
         return;
       }
       const legendOpen = legendEl.classList.contains('mobile-open');
@@ -1125,8 +1105,7 @@
         clearCacheBtn.style.right = '8px';
         toggleLegendBtn.style.bottom = '12px';
         toggleLegendBtn.style.left = '8px';
-        if (zoomControlEl) zoomControlEl.style.marginBottom = '124px';
-        if (scaleControlEl) scaleControlEl.style.marginBottom = '70px';
+        if (zoomControlEl) zoomControlEl.style.marginBottom = '88px';
         return;
       }
       const gap = 12;
@@ -1135,8 +1114,7 @@
       clearCacheBtn.style.right = '8px';
       toggleLegendBtn.style.bottom = lifted + 'px';
       toggleLegendBtn.style.left = '8px';
-      if (zoomControlEl) zoomControlEl.style.marginBottom = (lifted + 112) + 'px';
-      if (scaleControlEl) scaleControlEl.style.marginBottom = (lifted + 56) + 'px';
+      if (zoomControlEl) zoomControlEl.style.marginBottom = (lifted + 76) + 'px';
     }
     function setMobileLegendOpen(open) {
       if (!legendEl || !toggleLegendBtn) return;
